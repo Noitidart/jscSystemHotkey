@@ -105,7 +105,7 @@ function hotkeysRegister() {
 						callInShtkPollWorker = Comm.callInX.bind(null, 'gShtkPollComm', null);
 					}
 					if (!gShtkPollComm) {
-						gShtkPollComm = new Comm.server.worker(gHKI.jscsystemhotkey_module_path + 'shtkPollWorker.js', ()=>({GTK_VERSION:(typeof(GTK_VERSION) != 'undefined' ? GTK_VERSION : null)}), aInitData=>gShtkPollStuff=aInitData, onBeforeShtkPollerTerminate );
+						gShtkPollComm = new Comm.server.worker(gHKI.jscsystemhotkey_module_path + 'shtkPollWorker.js', ()=>({GTK_VERSION:(typeof(GTK_VERSION) != 'undefined' ? GTK_VERSION : null)}), aInitData=>gShtkPollStuff=aInitData );
 					}
 
 					var deferred_regpl = new Deferred();
@@ -636,8 +636,9 @@ function hotkeysNonce(length) {
 	return text;
 }
 
-function onBeforeShtkPollerTerminate() {
-	return new Promise(resolve =>
-  	  callInShtkPollWorker( 'onBeforeTerminate', null, ()=>resolve() )
-    );
-}
+// not needed, because the onBeforeTerminate of the shtkMainworkerSubscript will already call this. and as this gets terminated, all its child workers will be terminated. and this will not terminate till `hotkeysUnregister` is done, well as long as devuser did `onBeforeTerminate` in `MainWorker.js` and in it calls `hotkeysUnregister()`. they should, i told them to in README.md and I do so in this jscSystemHotkey-demo
+// function onBeforeShtkPollerTerminate() {
+// 	return new Promise(resolve =>
+//   	  callInShtkPollWorker( 'onBeforeTerminate', null, ()=>resolve() )
+//     );
+// }

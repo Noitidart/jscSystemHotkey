@@ -43,12 +43,13 @@ switch (OS.Constants.Sys.Name.toLowerCase()) {
 // Setup communication layer with mainworker
 var gWkComm = new Comm.client.worker();
 
-function onBeforeTerminate() {
-  var promiseall_arr = [];
-  promiseall_arr.push(hotkeysUnregisterPl()); // on mac its a promise, on others its not, but `Promise.all` works fine with non-promise entries in its array
-  // any other things you want to do before terminate, push it to promiseall_arr
-  return Promise.all(promiseall_arr);
-}
+// not needed, because the onBeforeTerminate of the shtkMainworkerSubscript will already call this
+// function onBeforeTerminate() {
+//   var promiseall_arr = [];
+//   promiseall_arr.push(hotkeysUnregisterPl()); // on mac its a promise, on others its not, but `Promise.all` works fine with non-promise entries in its array
+//   // any other things you want to do before terminate, push it to promiseall_arr
+//   return Promise.all(promiseall_arr);
+// }
 
 function init(aArg) {
 	var { GTK_VERSION } = aArg;
