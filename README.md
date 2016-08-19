@@ -1,5 +1,5 @@
 ## Announcements
-###### ***August 18, 2016*** - Not yet ready for use. I have only wrote out the design in the README.md and created blank files.
+###### ***August 18, 2016*** - Not yet ready for use. I have only wrote out the design in the README.md and created blank files. The code is done, it just needs be brought over from Noitidart/NativeShot repository.
 
 ## Dependency Submodules
 Make sure to import [Noitidart/ostypes](https://github.com/Noitidart/ostypes) and [Noitidart/Comm](https://github.com/Noitidart/Comm) submodules first.
