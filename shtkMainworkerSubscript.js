@@ -11,6 +11,10 @@ function hotkeysRegister() {
 		// reason - string explaining why
 	var deferredmain = new Deferred();
 
+	if (!('next_hotkey_id' in gHKI)) {
+		gHKI.next_hotkey_id = 1;
+	}
+
 	switch (gHKIOsName) {
 		case 'winnt':
 		case 'winmo':
