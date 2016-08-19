@@ -1,5 +1,5 @@
-### NOT YET READY FOR USE as of Aug 18th 2016
-###### I have only wrote the design in the README.md and created blank files
+## Announcements
+###### ***August 18, 2016*** - Not yet ready for use. I have only wrote out the design in the README.md and created blank files.
 
 ## Dependency Submodules
 Make sure to import [Noitidart/ostypes](https://github.com/Noitidart/ostypes) and [Noitidart/Comm](https://github.com/Noitidart/Comm) submodules first.
@@ -11,8 +11,6 @@ Add this submodule to your project like this:
 
 ## Usage
 This code is meant to be used from a `ChromeWorker`. This is the central area you will control it from. the `shtkMainthreadSubscript.js` is only needed because hotkeys on a Mac system require the callbacks be setup on the mainthread.
-
-### Step 1 - Import the subscripts
 
 In `bootstrap.js` or `main.js` or whatever you are using for your main thread put this:
 
@@ -65,7 +63,8 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 						mods: {
 							shift: true
 						},
-						desc: 'Shift + Space Bar'
+						desc: 'Shift + Space Bar',
+						mac_method: 'carbon' // this key is only available to macs, see the section "About mac_method" to learn about this // other possible values are 'corefoundation' and 'objc'
 					}
 				];
 			break;
@@ -191,4 +190,23 @@ And then on the main thread side, when you spawn the worker you would have it do
 >     	return Promise.all(promiseall_arr);
 >     }
 >     
+>     function init(aArg) {
+>     	var { TOOLKIT } = aArg;
+>     	core.os.toolkit = TOOLKIT; // needed for ostypes for linux to know if should use GTK2 or GTK3
+>     }
+>     
 >     // THE WORKER CODE FROM "STEP 1" FROM ABOVE
+
+### About `mac_method`
+###### `string; enum['carbon', 'corefoundation', 'objc']`
+
+This key is available only to Mac OS X. Possible values are `carbon`, `corefoundation`, or `objc`.
+
+#### `carbon`
+The `carbon` method sets up a call on the main thread. It relies on the main application event loop. For `code` you should use `ostypes.CONST.KEY_***`. All of these hotkeys will be system wide. However it does not support `ostypes.CONST.NX_***` for `code`. For this you would have to use `corefoundation` or `objc`.
+
+#### `objc`
+The `objc` method also setups a call on the main thread. You can use `ostypes.CONST.NX_***` for values of `code`. You can use this to register the `F` keys. Such as media key play you would use `ostypes.CONST.NX_KEYTYPE_PLAY`. Some keys with this method register system wide, as is the intention of this submodule. However most keys register only locally in the application. I think all `ostypes.CONST.NX_***` regsitered with this method are global. I am not sure. For the `ostypes.CONST.NX_KEYTYPE_PLAY` it is for sure, however iTunes will interfere. If you want to register the "Play" key without interference from iTunes then you have to use `corefounation`.
+
+#### `corefoundation`
+The `corfoundation` does not use the main thread. It spawns another worker and runs a poll. You can use `ostypes.CONST.NX_***` for code here. Same situation as `objc`, this does not register system wide for all hotkeys, only for sume. I think all "F" keys, like "Play" will register globally. The media key "Play" does and iTunes will not interfere with it.
