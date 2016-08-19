@@ -514,11 +514,26 @@ function hotkeysModsToModsos(mods) {
 			if (mods) {
 				// possible mods: alt, control, shift, meta // TODO: <<< these are not yet supported
 					// nix only mods: capslock, numlock - these are supported
+
+				// XCB_MOD_MASK_*** to what - http://stackoverflow.com/questions/19376338/xcb-keyboard-button-masks-meaning#comment28827071_19376338
+					// "Usually Mask1 is Alt or Meta, Mask2 is Num lock, Mask3 is AltGr, Mask4 is Win, and Mask5 is Scroll lock, but this varies between X implementations and/or keyboard models."
 				if (mods.capslock) {
 					mods_os |= ostypes.CONST.XCB_MOD_MASK_LOCK;
 				}
 				if (mods.numlock) {
 					mods_os |= ostypes.CONST.XCB_MOD_MASK_2;
+				}
+				if (mods.shift) {
+					mods_os |= ostypes.CONST.XCB_MOD_MASK_SHIFT;
+				}
+				if (mods.control) {
+					mods_os |= ostypes.CONST.XCB_MOD_MASK_CONTROL;
+				}
+				if (mods.alt) {
+					mods_os |= ostypes.CONST.XCB_MOD_MASK_1;
+				}
+				if (mods.meta) {
+					mods_os |= ostypes.CONST.XCB_MOD_MASK_4;
 				}
 			}
 	}
