@@ -4,6 +4,9 @@
 
 var gHKIOsName = OS.Constants.Sys.Name.toLowerCase();
 var gHKILoopInterval = null;
+var callInShtkPollWorker;
+var gShtkPollComm;
+var gShtkPollStuff = {};
 
 function hotkeysRegister() {
 	// on error, it returns an object:
@@ -59,56 +62,102 @@ function hotkeysRegister() {
 				var hotkeys_basic = [];
 				var { hotkeys } = gHKI;
 
+				var reg_mt = false;
+				var reg_poll = false;
+
 				for (var hotkey of hotkeys) {
-					var { code:code_os, mods } = hotkey;
+					var { code:code_os, mods, mac_method, __REGISTERED } = hotkey;
 
-					var mods_os = hotkeysModsToModsos(mods);
+					if (!__REGISTERED) {
+						var mods_os = hotkeysModsToModsos(mods);
 
-					var hotkeyid = gHKI.next_hotkey_id++;
-					var signature = ostypes.HELPER.OS_TYPE(hotkeysNonce(4 - hotkeyid.toString().length) + hotkeyid.toString());
+						var hotkeyid = gHKI.next_hotkey_id++;
+						var signature = mac_method == 'carbon' ? ostypes.HELPER.OS_TYPE(hotkeysNonce(4 - hotkeyid.toString().length) + hotkeyid.toString()) : undefined;
 
-					hotkey.temp_hotkeyid = hotkeyid; // this is premetive, so on return of `hotkeysRegisterMt`, i can go in and find the corresponding `hotkey` entry to attach the returned `ref`/`__REGISTERED`
+						hotkey.temp_hotkeyid = hotkeyid; // this is premetive, so on return of `hotkeysRegisterMt`, i can go in and find the corresponding `hotkey` entry to attach the returned `ref`/`__REGISTERED`
 
-					hotkeys_basic.push({
-						mods_os,
-						code_os,
-						signature,
-						hotkeyid
+						hotkeys_basic.push({
+							mods_os,
+							code_os,
+							signature,
+							hotkeyid,
+							mac_method
+						});
+
+						if (mac_method == 'objc' || mac_method == 'carbon') {
+							reg_mt = true;
+						} else if (mac_method == 'corefoundation') {
+							reg_poll = true;
+						}
+					}
+				}
+
+				var promiseallarr_reg = [];
+				if (reg_mt) {
+					var deferred_regmt = new Deferred();
+					promiseallarr_reg.push(deferred_regmt.promise);
+					callInBootstrap('hotkeysRegisterMt', { hotkeys_basic }, function(aObjOfErrAndRegs) {
+						deferred_regmt.resolve(aObjOfErrAndRegs);
+					});
+				}
+				if (reg_poll) {
+					if (!callInShtkPollWorker) {
+						callInShtkPollWorker = Comm.callInX.bind(null, 'gShtkPollComm', null);
+					}
+					if (!gShtkPollComm) {
+						gShtkPollComm = new Comm.server.worker(gHKI.jscsystemhotkey_module_path + 'shtkPollWorker.js', ()=>({GTK_VERSION:(typeof(GTK_VERSION) != 'undefined' ? GTK_VERSION : null)}), aInitData=>gShtkPollStuff=aInitData, onBeforeShtkPollerTerminate );
+					}
+
+					var deferred_regpl = new Deferred();
+					promiseallarr_reg.push(deferred_regpl.promise);
+					callInShtkPollWorker('hotkeysRegisterPl', { hotkeys_basic }, function(aObjOfErrAndRegs) {
+						deferred_regpl.resolve(aObjOfErrAndRegs);
 					});
 				}
 
-				callInBootstrap('hotkeysRegisterMt', { hotkeys_basic }, function(aObjOfErrAndRegs) {
-					var { __ERROR, __REGISTREDs } = aObjOfErrAndRegs;
+				Promise.all(promiseallarr_reg).then(obj_failed_regs_arr => {
+					var errored; // the first hotkey that errored
+					// if errored, it will set it to a obj
+						// hotkey: may be undefined if "none associated" with the `reason`
+						// reason
 
-					var errored_hotkey;
-					if (__ERROR && __ERROR.hotkeyid) {
-						// find the `hotkey` entry associated with it, as in next block i will delete all hotkey.temp_hotkeyid
-						errored_hotkey = hotkeys.find( el => el.temp_hotkeyid === __ERROR.hotkeyid );
-					}
+					// populate `errored` and `__REGISTERED` of `hotkey`s
+					for (var obj_failed_regs of obj_failed_regs_arr) {
+						var { __ERROR, __REGISTREDs } = obj_failed_regs;
 
-					if (Object.keys(__REGISTREDs).length) {
-						// if any were succesfully registered, then go through add the `__REGISTERED` object to the associated `hotkey` entry. find association by `hotkey.temp_hotkeyid`
-						for (var hotkey of hotkeys) {
-							var { temp_hotkeyid:hotkeyid } = hotkey;
-
-							delete hotkey.temp_hotkeyid;
-
-							if (__REGISTREDs[hotkeyid]) {
-								hotkey.__REGISTERED = __REGISTREDs[hotkeyid];
+						if (__ERROR && !errored) {
+							errored = __ERROR;
+							if (errored.hotkeyid) {
+								// find the `hotkey` entry associated with it, as in next block i will delete all hotkey.temp_hotkeyid
+								errored.hotkey = hotkeys.find( el => el.temp_hotkeyid === __ERROR.hotkeyid );
+								delete errored.hotkeyid;
 							}
 						}
 
-						if (__ERROR) {
-							hotkeysUnregister();
+						if (Object.keys(__REGISTREDs).length) {
+							// if any were succesfully registered, then go through add the `__REGISTERED` object to the associated `hotkey` entry. find association by `hotkey.temp_hotkeyid`
+							for (var hotkey of hotkeys) {
+								var { temp_hotkeyid:hotkeyid } = hotkey;
+
+								if (__REGISTREDs[hotkeyid]) {
+									hotkey.__REGISTERED = __REGISTREDs[hotkeyid];
+								}
+							}
 						}
 					}
 
-					if (__ERROR) {
-						deferredmain.resolve({
-							hotkey: errored_hotkey,
-							reason: __ERROR.reason
-						});
+					// delete temp_hotkeyid
+					for (var hotkey of hotkeys) {
+						delete hotkey.temp_hotkeyid;
 					}
+
+					if (errored) {
+						hotkeysUnregister(); // unregister whatever was registered, if any were
+						deferredmain.resolve(errored);
+					} else {
+						deferredmain.resolve(); // resolve with `undefined` indicating no error
+					}
+
 				});
 
 			break;
@@ -274,15 +323,51 @@ function hotkeysUnregister() {
 			break;
 		case 'darwin':
 
-				var deferredmain = new Deferred();
-				callInBootstrap('hotkeysUnregisterMt', { hotkeys }, function() {
-					for (var hotkey of hotkeys) {
-						delete hotkey.__REGISTERED;
-					}
-					deferredmain.resolve()
-				});
+				// returns Promise.all
 
-				return deferredmain.promise;
+				// any "carbon" or "objc" methods to unregister?
+				var unreg_mt = false;
+				var unreg_poll = false;
+
+				for (var hotkey of hotkeys) {
+					if (hotkey.__REGISTERED) {
+						if (hotkey.mac_method == 'carbon' || hotkey.mac_method == 'obj') {
+							unreg_mt = true;
+						} else if (hotkey.mac_method == 'corefoundation') {
+							unreg_poll = true;
+						}
+					}
+				}
+
+				var promiseall_arr = [];
+				if (unreg_mt) {
+					var deferred_unregmt = new Deferred();
+					promiseall_arr.push(deferred_unregmt.promise);
+
+					callInBootstrap('hotkeysUnregisterMt', { hotkeys }, function() {
+						for (var hotkey of hotkeys) {
+							delete hotkey.__REGISTERED;
+						}
+						deferred_unregmt.resolve()
+					});
+				}
+				if (unreg_poll) {
+					var deferred_unregpoll = new Deferred();
+					promiseall_arr.push(deferred_unregpoll.promise);
+
+					console.log('gShtkPollStuff:', gShtkPollStuff);
+					var runloop_ref = ostypes.TYPE.CFRunLoopRef(ctypes.UInt64(gShtkPollStuff.runloop_ref_strofptr))
+					ostypes.API('CFRunLoopStop')(runloop_ref);
+
+					callInShtkPollWorker('hotkeysUnregisterPl', null, function() {
+						for (var hotkey of hotkeys) {
+							delete hotkey.__REGISTERED;
+						}
+						deferred_unregpoll.resolve()
+					});
+				}
+
+				return Promise.all(promiseall_arr);
 
 			break;
 		default:
@@ -549,4 +634,10 @@ function hotkeysNonce(length) {
 		text += possible.charAt(Math.floor(Math.random() * possible.length));
 	}
 	return text;
+}
+
+function onBeforeShtkPollerTerminate() {
+	return new Promise(resolve =>
+  	  callInShtkPollWorker( 'onBeforeTerminate', null, ()=>resolve() )
+    );
 }

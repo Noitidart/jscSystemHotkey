@@ -48,31 +48,33 @@ function hotkeysRegisterMt(aArg) {
 					gHotkeyRefs.install = install_ref;
 					// gHotkeyInstallRef = cutils.strOfPtr(install_ref);
 					for (var hotkey_basic of hotkeys_basic) {
-						var { signature, hotkeyid, code_os, mods_os } = hotkey_basic;
+						var { signature, hotkeyid, code_os, mods_os, mac_method } = hotkey_basic;
 
-						var ref = ostypes.TYPE.EventHotKeyRef();
-						var inHotKeyID = ostypes.TYPE.EventHotKeyID();
-						inHotKeyID.signature = signature; // has to be a four char code. MACS is http://stackoverflow.com/a/27913951/1828637 0x4d414353 so i just used htk1 as in the example here http://dbachrach.com/blog/2005/11/program-global-hotkeys-in-cocoa-easily/ i just stuck into python what the stackoverflow topic told me and got it struct.unpack(">L", "htk1")[0]
-						inHotKeyID.id = hotkeyid;
+						if (mac_method == 'carbon') {
+							var ref = ostypes.TYPE.EventHotKeyRef();
+							var inHotKeyID = ostypes.TYPE.EventHotKeyID();
+							inHotKeyID.signature = signature; // has to be a four char code. MACS is http://stackoverflow.com/a/27913951/1828637 0x4d414353 so i just used htk1 as in the example here http://dbachrach.com/blog/2005/11/program-global-hotkeys-in-cocoa-easily/ i just stuck into python what the stackoverflow topic told me and got it struct.unpack(">L", "htk1")[0]
+							inHotKeyID.id = hotkeyid;
 
-						var rez_reg = ostypes.API('RegisterEventHotKey')(code_os, mods_os, inHotKeyID, rez_appTarget, 0, ref.address());
-						console.log('rez_reg:', rez_reg.toString(), ostypes.HELPER.convertLongOSStatus(rez_reg));
+							var rez_reg = ostypes.API('RegisterEventHotKey')(code_os, mods_os, inHotKeyID, rez_appTarget, 0, ref.address());
+							console.log('rez_reg:', rez_reg.toString(), ostypes.HELPER.convertLongOSStatus(rez_reg));
 
-						if (cutils.jscEqual(rez_reg, ostypes.CONST.noErr)) {
-							// gHotkeyRefs.push(ref);
-							gHotkeyRefs[hotkeyid] = ref;
-							__REGISTREDs[hotkeyid] = {
-								// ref: cutils.strOfPtr(ref),
-								hotkeyid,
-								signature, // not really used, but ill store it, for the heck of it
-								last_triggered: 0
-							};
-						} else {
-							__ERROR = {
-								hotkeyid,
-								reason: 'Failed to register hotkey for OSStatus of "' + cutils.jscGetDeepest(rez_reg) + '" / "' + ostypes.HELPER.convertLongOSStatus(cutils.jscGetDeepest(rez_reg)) + '"'
-							};
-							break;
+							if (cutils.jscEqual(rez_reg, ostypes.CONST.noErr)) {
+								// gHotkeyRefs.push(ref);
+								gHotkeyRefs[hotkeyid] = ref;
+								__REGISTREDs[hotkeyid] = {
+									// ref: cutils.strOfPtr(ref),
+									hotkeyid,
+									signature, // not really used, but ill store it, for the heck of it
+									last_triggered: 0
+								};
+							} else {
+								__ERROR = {
+									hotkeyid,
+									reason: 'Failed to register Carbon hotkey for OSStatus of "' + cutils.jscGetDeepest(rez_reg) + '" / "' + ostypes.HELPER.convertLongOSStatus(cutils.jscGetDeepest(rez_reg)) + '"'
+								};
+								break;
+							}
 						}
 					}
 
@@ -106,25 +108,33 @@ function hotkeysUnregisterMt(aArg) {
 
 				var { hotkeys } = aArg;
 
+				var has_carbon = false;
+
 				for (var hotkey of hotkeys) {
-					var { __REGISTERED } = hotkey;
+					var { __REGISTERED, mac_method } = hotkey;
 					if (__REGISTERED) {
 						// var { ref } = __REGISTERED;
 						var { hotkeyid } = __REGISTERED;
-						// ref = ostypes.TYPE.EventHotKeyRef(ctypes.UInt64(ref));
-						var rez_unreg = ostypes.API('UnregisterEventHotKey')(gHotkeyRefs[hotkeyid]);
-						console.log('rez_unreg:', rez_unreg, rez_unreg.toString());
-						// TODO: maybe some error handling, i dont do yet for windows or nix so i dont do here for now either
+
+						if (mac_method == 'carbon') {
+							has_carbon = true;
+							// ref = ostypes.TYPE.EventHotKeyRef(ctypes.UInt64(ref));
+							var rez_unreg = ostypes.API('UnregisterEventHotKey')(gHotkeyRefs[hotkeyid]);
+							console.log('rez_unreg:', rez_unreg, rez_unreg.toString());
+							// TODO: maybe some error handling, i dont do yet for windows or nix so i dont do here for now either
+						}
 					}
 				}
 
-				// var install_ref = ostypes.TYPE.EventHandlerRef(ctypes.UInt64(gHotkeyInstallRef));
-				var rez_uninstall = ostypes.API('RemoveEventHandler')(gHotkeyRefs.install);
-				console.log('rez_uninstall:', rez_uninstall, rez_uninstall.toString());
+				if (has_carbon) {
+					// var install_ref = ostypes.TYPE.EventHandlerRef(ctypes.UInt64(gHotkeyInstallRef));
+					var rez_uninstall = ostypes.API('RemoveEventHandler')(gHotkeyRefs.install);
+					console.log('rez_uninstall:', rez_uninstall, rez_uninstall.toString());
+				}
 
 				gHotkeyRefs = null;
 				gHotkeyMacCallbackMt_c = null;
-				gHotkeyInstallRef = null;
+				// gHotkeyInstallRef = null;
 				gHotkeysRegisteredMt = false;
 
 			break;
