@@ -122,14 +122,33 @@ function hotkeysRegisterPl(aArg) {
 							console.log('casted data1:', data1);
 
 							var keyCode = data1 >>> 16;
-							var keyRepeat = !!(data1 & 0x1);
-							var keyUp = data1 & 0x0100;
+							var keyRepeat = data1 & 0x1;
+							var keyFlags = data1 & 0x0000FFFF;
+							var keyState = (((keyFlags & 0xFF00) >> 8)) == 0xA; // "I’m not completely sure on the “keyState” code, it appears the value alternates between 0xA and 0xB depending on if the key is up or down. There may be other values I don’t know about though." - http://weblog.rogueamoeba.com/2007/09/29/
+
+							var modsc = {
+								meta: false,
+								shift: false,
+								alt: false,
+								control: false,
+								fn: false,
+								capslock: false
+							};
+
+							// maybe should get keyFlags with `NSUInteger theFlags = [NSEvent modifierFlags];` ?
+							if (keyFlags & NSCommandKeyMask)	{ modsc.meta = true }
+						    if (keyFlags & NSShiftKeyMask)		{ modsc.shift = true }
+						    if (keyFlags & NSAlternateKeyMask)	{ modsc.alt = true }
+						    if (keyFlags & NSControlKeyMask)	{ modsc.control = true }
+						    if (keyFlags & NSFunctionKeyMask)	{ modsc.fn = true }
+							if (keyFlags & NSAlphaShiftKeyMask)	{ modsc.capslock = true }
 
 							var now_triggered = Date.now();
 
 							for (var hotkey_basic of gMacStuff.hotkeys_basic) {
-								var { code_os, hotkeyid } = hotkey_basic;
+								var { code_os, hotkeyidk, mods } = hotkey_basic;
 								if (cutils.jscEqual(code_os, keyCode)) {
+									console.log('current mods:', modsc, 'hotkey->mods:', mods);
 									callInMainworker('hotkeyMacCallback', {
 										hotkeyid,
 										now_triggered

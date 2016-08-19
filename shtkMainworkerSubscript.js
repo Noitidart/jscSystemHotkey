@@ -78,6 +78,7 @@ function hotkeysRegister() {
 
 						hotkeys_basic.push({
 							mods_os,
+							mods,
 							code_os,
 							signature,
 							hotkeyid,
