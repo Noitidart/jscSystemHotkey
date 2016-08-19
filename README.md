@@ -14,7 +14,7 @@ This code is meant to be used from a `ChromeWorker`. This is the central area yo
 
 In `bootstrap.js` or `main.js` or whatever you are using for your main thread put this:
 
-    // you need to `Services` module
+    // we need `Services` object
 	// var { ChromeWorker, Cu } = require('chrome'); // SDK
 	var { Cu } = Components; // non-SDK
 	Cu.import('resource://gre/modules/Services.jsm');
@@ -30,7 +30,12 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 	var gHKI = { // stands for globalHotkeyInfo
 		loop_interval_ms: 200, // only for windows and xcb - you can think of this as "if a user hits the hotkey, it will not be detected until `loop_interval_ms`ms later".
 		min_time_between_repeat: 1000, // if a the user holds down the hotkey, it will not trigger. the user must release the hotkey and wait `min_time_between_repeat`ms before being able to trigger the hotkey again
-		hotkeys: undefined // array of objects we set based on platform below
+		hotkeys: undefined, // array of objects we set based on platform below
+		callbacks: { // `key` is any string, and value is a function, you will use the `key` in the `callback` field of each hotkey, see `hotkeys` array below
+			blah: function() {
+				console.log('blah triggered by hotkey!')
+			}
+		}
 	};
 
 	// we set the hotkeys based on the platform
@@ -40,7 +45,7 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 		case 'wince':
 				gHKI.hotkeys = [
 					{
-						code: ostypes.CONST.VK_SPACE,
+						code: ostypes.CONST.VK_SPACE, // can use any `ostypes.CONST.VK_***` or `ostypes.CONST.vk_***`, see `ostypes_win.jsm` for list of values
 						mods: {
 							/* List of boolean keys
 							 *   shift
@@ -53,17 +58,19 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 							shift: true
 						},
 						desc: 'Shift + Space Bar', // this is the description in english (or whatever language) of the key combination described by `code` and `mods`. this is used when teling which hotkey failed to register
+						callback: 'blah' // string - key of the callback in the `gHKI.callbacks` object
 					}
 				];
 			break;
 		case 'darwin':
 				gHKI.hotkeys = [
 					{
-						code: ostypes.CONST.KEY_Space,
+						code: ostypes.CONST.KEY_Space,  // can use any `ostypes.CONST.KEY_***` or `ostypes.CONST.NX_***`, see `ostypes_mac.jsm` for list of values. See section "About mac_method" to see which method supports which keys, I haven't fully studied this, so please your knowledge/experiences with it
 						mods: {
 							shift: true
 						},
 						desc: 'Shift + Space Bar',
+						callback: 'blah',
 						mac_method: 'carbon' // this key is only available to macs, see the section "About mac_method" to learn about this // other possible values are 'corefoundation' and 'objc'
 					}
 				];
@@ -72,11 +79,12 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 			// xcb (*nix/bsd)
 			gHKI.hotkeys = [
 				{
-					code: ostypes.CONST.XK_Space,
+					code: ostypes.CONST.XK_Space, // can use any `ostypes.CONST.XK_***`, see `ostypes_x11.jsm` for list of values
 					mods: {
 						shift: true
 					},
-					desc: 'Shift + Space Bar'
+					desc: 'Shift + Space Bar',
+					callback: 'blah'
 				},
 				// because xcb (*nix/bsd) count capslock and numlock, we need to add three more combos just for these
 				{
@@ -85,7 +93,8 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 						shift: true,
 						capslock: true
 					},
-					desc: 'Shift + Space Bar'
+					desc: 'Shift + Space Bar',
+					callback: 'blah'
 				},
 				{
 					code: ostypes.CONST.XK_Space,
@@ -93,7 +102,8 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 						shift: true,
 						numlock: true
 					},
-					desc: 'Shift + Space Bar'
+					desc: 'Shift + Space Bar',
+					callback: 'blah'
 				},
 				{
 					code: ostypes.CONST.XK_Space,
@@ -102,7 +112,8 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 						capslock: true,
 						numlock: true
 					},
-					desc: 'Shift + Space Bar'
+					desc: 'Shift + Space Bar',
+					callback: 'blah'
 				}
 			];
 	}
