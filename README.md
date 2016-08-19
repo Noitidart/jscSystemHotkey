@@ -4,42 +4,89 @@
 ## Demo
 Download `CommPlayground.xpi` and load it as a temporary addon from `about:debugging` from here - [Noitidart/CommPlayground ::  Branch:jscSystemHotkey-demo](https://github.com/Noitidart/CommPlayground/tree/jscSystemHotkey-demo).
 
-The hotkey is "Shift + Space Bar", and on Mac a second hotkey of the "Play" media key.
+The hotkey is "Shift + Space Bar", and on Mac a second hotkey of the "Play" media key. Open your "Browser Console" (Ctrl/Cmd + Shift + J) and you will see a message saying "blah triggered by hotkey!".
 
 ## Dependency Submodules
 Make sure to import [Noitidart/ostypes](https://github.com/Noitidart/ostypes) and [Noitidart/Comm](https://github.com/Noitidart/Comm) submodules first.
 
-## Import
-Add this submodule to your project like this:
-
-    git submodule add git@github.com:Noitidart/jscSystemHotkey OPTIONAL/CUSTOM/FOLDER/PATH/HERE
-
 ## Usage
 This code is meant to be used from a `ChromeWorker`. This is the central area you will control it from. the `shtkMainthreadSubscript.js` is only needed because hotkeys on a Mac system require the callbacks be setup on the mainthread.
 
+### Step 1 - Import Submodules
+Import "ostypes", "Comm", and "jscSystemHotkey" submodules. This is how you import submodules:
+
+    git submodule add git@github.com:Noitidart/jscSystemHotkey OPTIONAL/CUSTOM/FOLDER/PATH/HERE
+
+### Step 2 - Create Paths JSON File
+In the directory containting the "jscSystemHotkey" submodule directory, place a file called `shtkPaths.json` and populate the paths to the submodule directories like this:
+
+    {
+    	"jscsystemhotkey": "chrome://jscsystemhotkey-demo/content/resources/scripts/jscSystemHotkey/",
+    	"comm": "chrome://jscsystemhotkey-demo/content/resources/scripts/Comm/",
+    	"ostypes": "chrome://jscsystemhotkey-demo/content/resources/scripts/ostypes/"
+    }
+
+### Step 3 - Main Thread Subscript
 In `bootstrap.js` or `main.js` or whatever you are using for your main thread put this:
 
     // we need `Services` object
 	// var { ChromeWorker, Cu } = require('chrome'); // SDK
-	var { Cu } = Components; // non-SDK
+	var { utils:Cu } = Components; // non-SDK
 	Cu.import('resource://gre/modules/Services.jsm');
 
     Services.scriptloader.loadSubScript('YOUR/PATH/TO/jscSystemHotkey/shtkMainthreadSubscript.js');
 
+Make sure to also `loadSubScript` of `ostypes` submodule.
+
+#### Handle termination
+In case the user disables/uninstalls your addon while the hotkey are registred, you should make sure to include a `hotkeysUnregister()` before the worker is terminated. This uses a key featue of `Comm` submodule. You should add this to your before termination procedure.
+
+    function onBeforeTerminate() {
+        return new Promise(resolve =>
+            callInMainworker( 'onBeforeTerminate', null, ()=>resolve() )
+        );
+    }
+
+This is a lesson on Comm sumbodule, you would put this function as the 4th argument of `new Comm.server.worker`:
+
+    gWkComm = new Comm.server.worker('YOUR/PATH/TO/MainWorker.js', ()=>{TOOLKIT}, undefined, onBeforeTerminate )
+
+
+### Step 4 - ChromeWorker Subscript
 At the top of your main worker put this:
 
     importScripts('YOUR/PATH/TO/jscSystemHotkey/shtkMainworkerSubscript.js');
 
+Make sure to also `importScripts` the `ostypes` submodule.
+
+#### Handle worker side termination
+Make sure it returns/includes-a-return with the promise from `hotkeysUnregister`. As unregistration is done asynchronously on Macs.
+
+	function onBeforeTerminate() {
+		var promiseall_arr = [];
+
+		promiseall_arr.push(hotkeysUnregister()); // on mac its a promise, on others its not, but `Promise.all` works fine with non-promise entries in its array
+
+		// any other things you want to do before terminate, push it to promiseall_arr
+
+		return Promise.all(promiseall_arr);
+	}
+
+### Step 5 - Defined Hotkeys and Callbacks
 Now in your worker setup your hotkeys in a global called `gHKI`.
 
 	var gHKI = { // stands for globalHotkeyInfo
-		loop_interval_ms: 200, // only for windows and xcb - you can think of this as "if a user hits the hotkey, it will not be detected until `loop_interval_ms`ms later".
+        jscsystemhotkey_module_path: 'YOUR/PATH/TO/jscSystemHotkey/', // the ending `/` is important
+		loop_interval_ms: 200, // only for windows and xcb - you can think of this as "if a user hits the hotkey, it will not be detected until `loop_interval_ms`ms later". You may want to reduce to less then 200ms, but probably not more then 25ms.
 		min_time_between_repeat: 1000, // if a the user holds down the hotkey, it will not trigger. the user must release the hotkey and wait `min_time_between_repeat`ms before being able to trigger the hotkey again
 		hotkeys: undefined, // array of objects we set based on platform below
 		callbacks: { // `key` is any string, and value is a function, you will use the `key` in the `callback` field of each hotkey, see `hotkeys` array below
 			blah: function() {
 				console.log('blah triggered by hotkey!')
-			}
+			},
+            another_callback: function() {
+
+            }
 		}
 	};
 
@@ -123,6 +170,7 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 			];
 	}
 
+### Step 6 - Register/Unregister
 Now whenever you are ready to listen for hotkeys do:
 
     hotkeysRegister().then(function(failed) {
@@ -143,38 +191,37 @@ And whenever you want to stop listening do:
 		console.log('Unregistering hotkeys done');
 	}
 
-In case the user disables/uninstalls your addon while the hotkey are registred, you should make sure to include a `hotkeysUnregister()` before the work is terminated. You have to be using `Comm` submodule, so you can have this function in your main worker:
-
-	function onBeforeTerminate() {
-		var promiseall_arr = [];
-
-		promiseall_arr.push(hotkeysUnregister()); // on mac its a promise, on others its not, but `Promise.all` works fine with non-promise entries in its array
-
-		// any other things you want to do before terminate, push it to promiseall_arr
-
-		return Promise.all(promiseall_arr);
-	}
-
-And then on the main thread side, when you spawn the worker you would have it do this on before termination, for example:
-
-	function onBeforeTerminate() {
-		return new Promise(resolve =>
-			callInMainworker( 'onBeforeTerminate', null, ()=>resolve() )
-		);
-	}
-
-	gWkComm = new Comm.server.worker('YOUR/PATH/TO/MainWorker.js', ()=>{TOOLKIT}, undefined, onBeforeTerminate )
-
->__NOTE__ You need to use worker. If you do not have a main worker then create one. In this example I will create one called `MainWorker.js`.
+> ### Notes
+> You need to use worker. If you do not have a main worker then create one. In this example I will create one called `MainWorker.js`.
 >
 >     // Globals
 >     var gWkComm;
 >     const TOOLKIT = Services.appinfo.widgetToolkit.toLowerCase(); // needed for Linux to detect if should use GTK2 or GTK3
 >     
 >     // Imports
+>     var { utils:Cu } = Components; // non-SDK
+>     Cu.import('resource://gre/modules/Services.jsm');
+>
 >     Services.scriptloader.loadSubScript('YOUR/PATH/TO/Comm.js');
 >     var { callInMainworker } = CommHelper.bootstrap;
 >     
+>     // import ostypes
+>     Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/cutils.jsm'); // need to load cutils first as ostypes_mac uses it for HollowStructure
+>     Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ctypes_math.jsm');
+>     switch (Services.appinfo.OS.toLowerCase()) {
+>         case 'winnt':
+>         case 'winmo':
+>         case 'wince':
+>                 Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ostypes_win.jsm');
+>             break;
+>         case 'darwin':
+>                 Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ostypes_mac.jsm');
+>             break;
+>         default:
+>             // assume xcb (*nix/bsd)
+>             Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ostypes_x11.jsm');
+>     }
+> 
 >     // Setup the worker
 >     function onBeforeTerminate() {
 >     	return new Promise(resolve =>
@@ -191,14 +238,35 @@ And then on the main thread side, when you spawn the worker you would have it do
 > The contents of `MainWorker.js` is the code from __Step 1__ and then this:
 >
 >     // Globals
->     var core = { os:{ toolkit: null } };
+>     var TOOLKIT; // needed for ostypes_xcb.jsm
 >     
 >     // Imports
 >     importScripts('YOUR/PATH/TO/Comm.js');
 >     var { callInBootstrap } = CommHelper.mainworker;
+>
+>     importScripts('YOUR/PATH/TO/jscSystemHotkey/shtkMainworkerSubscript.js');
 >     
+>     // import ostypes
+>     importScripts('YOUR/PATH/TO//cutils.jsm');
+>     importScripts('YOUR/PATH/TO//ctypes_math.jsm');
+>     
+>     switch (OS.Constants.Sys.Name.toLowerCase()) {
+>       case 'winnt':
+>       case 'winmo':
+>       case 'wince':
+>     		  importScripts('YOUR/PATH/TO//ostypes_win.jsm');
+>     	  break;
+>       case 'darwin':
+>     		  importScripts('YOUR/PATH/TO//ostypes_mac.jsm');
+>     	  break;
+>       default:
+>     	  // we assume it is a GTK based system. All Linux/Unix systems are GTK for Firefox. Even on Qt based *nix systems.
+>     	  importScripts('YOUR/PATH/TO/ostypes/ostypes_x11.jsm');
+>     }
+>
 >     // Setup communication layer with bootstrap
 >     var gBsComm = new Comm.client.worker();
+>
 >     function onBeforeTerminate() {
 >     	var promiseall_arr = [];
 >     	promiseall_arr.push(hotkeysUnregister()); // on mac its a promise, on others its not, but `Promise.all` works fine with non-promise entries in its array
@@ -207,8 +275,7 @@ And then on the main thread side, when you spawn the worker you would have it do
 >     }
 >     
 >     function init(aArg) {
->     	var { TOOLKIT } = aArg;
->     	core.os.toolkit = TOOLKIT; // needed for ostypes for linux to know if should use GTK2 or GTK3
+>     	({ TOOLKIT } = aArg); // this sets the TOOLKIT global var
 >     }
 >     
 >     // THE WORKER CODE FROM "STEP 1" FROM ABOVE
