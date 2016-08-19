@@ -65,7 +65,7 @@ function hotkeysRegister() {
 					var mods_os = hotkeysModsToModsos(mods);
 
 					var hotkeyid = gHKI.next_hotkey_id++;
-					var signature = ostypes.HELPER.OS_TYPE(nonce(4 - hotkeyid.toString().length) + hotkeyid.toString());
+					var signature = ostypes.HELPER.OS_TYPE(hotkeysNonce(4 - hotkeyid.toString().length) + hotkeyid.toString());
 
 					hotkey.temp_hotkeyid = hotkeyid; // this is premetive, so on return of `hotkeysRegisterMt`, i can go in and find the corresponding `hotkey` entry to attach the returned `ref`/`__REGISTERED`
 
@@ -533,10 +533,20 @@ function hotkeysModsToModsos(mods) {
 					mods_os |= ostypes.CONST.XCB_MOD_MASK_1;
 				}
 				if (mods.meta) {
-					mods_os |= ostypes.CONST.XCB_MOD_MASK_4;
+					// by meta i mean "Win" key on windows. xcb likes to call meta the alt key. so i go with "Win" key					mods_os |= ostypes.CONST.XCB_MOD_MASK_4
 				}
 			}
 	}
 
 	return mods_os;
+}
+
+function hotkeysNonce(length) {
+	// generates a nonce
+	var text = '';
+	var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	for(var i = 0; i < length; i++) {
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	}
+	return text;
 }
