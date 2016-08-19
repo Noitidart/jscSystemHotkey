@@ -161,32 +161,3 @@ function hotkeyMacCallbackMt(nextHandler, theEvent, userDataPtr) {
 	return 0; // must be of type ostypes.TYPE.OSStatus
 }
 // end - mainthread side for system hotkey
-
-if (typeof(ostypes) == 'undefined') {
-	var ostypes;
-}
-if (typeof(initOstypes) == 'undefined') {
-	function initOstypes() {
-		if (!ostypes) {
-			if (typeof(ctypes) == 'undefined') {
-				Cu.import('resource://gre/modules/ctypes.jsm');
-			}
-
-			Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/cutils.jsm'); // need to load cutils first as ostypes_mac uses it for HollowStructure
-			Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ctypes_math.jsm');
-			switch (Services.appinfo.OS.toLowerCase()) {
-				case 'winnt':
-				case 'winmo':
-				case 'wince':
-						Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ostypes_win.jsm');
-					break;
-				case 'darwin':
-						Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ostypes_mac.jsm');
-					break;
-				default:
-					// assume xcb (*nix/bsd)
-					Services.scriptloader.loadSubScript(PATH_SCRIPTS + 'ostypes/ostypes_x11.jsm');
-			}
-		}
-	}
-}
