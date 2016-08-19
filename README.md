@@ -1,5 +1,5 @@
 ## Announcements
-###### ***August 18, 2016*** - Not yet ready for use. I have only wrote out the design in the README.md and created blank files. The code is done, it just needs be brought over from Noitidart/NativeShot repository.
+###### ***August 19, 2016*** - Ready for use. Only "carbon" method of mac was implemented so far. I plan to bring in "corefoundation" and "objc" methods which are both currently done and in use at the carlin-q-scott/browser-media-keys repository.
 
 ## Dependency Submodules
 Make sure to import [Noitidart/ostypes](https://github.com/Noitidart/ostypes) and [Noitidart/Comm](https://github.com/Noitidart/Comm) submodules first.
