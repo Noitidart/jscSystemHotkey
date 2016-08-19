@@ -1,5 +1,10 @@
 ## Announcements
-###### ***August 18, 2016*** - Not yet ready for use. I have only wrote out the design in the README.md and created blank files. The code is done, it just needs be brought over from Noitidart/NativeShot repository.
+###### ***August 19, 2016*** - In working order. On Mac, the "corefoundation" method does not yet accept modifiers. The "objc" method was not yet implemented, no real need to, as the "corefoundation" method does it all. If the "objc" method is requested, I have the code ready and can bring it in.
+
+## Demo
+Download `CommPlayground.xpi` and load it as a temporary addon from `about:debugging` from here - [Noitidart/CommPlayground ::  Branch:jscSystemHotkey-demo](https://github.com/Noitidart/CommPlayground/tree/jscSystemHotkey-demo).
+
+The hotkey is "Shift + Space Bar", and on Mac a second hotkey of the "Play" media key.
 
 ## Dependency Submodules
 Make sure to import [Noitidart/ostypes](https://github.com/Noitidart/ostypes) and [Noitidart/Comm](https://github.com/Noitidart/Comm) submodules first.
@@ -79,7 +84,7 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 			// xcb (*nix/bsd)
 			gHKI.hotkeys = [
 				{
-					code: ostypes.CONST.XK_Space, // can use any `ostypes.CONST.XK_***`, see `ostypes_x11.jsm` for list of values
+					code: ostypes.CONST.XK_Space, // can use any `ostypes.CONST.XK_***` or `ostypes.CONST.XF86***`, see `ostypes_x11.jsm` for list of values, not all values are there, if any missing please submit a PR to "ostypes" repo, or let me know and I'll add it in
 					mods: {
 						shift: true
 					},
