@@ -146,7 +146,7 @@ function hotkeysRegisterPl(aArg) {
 							var now_triggered = Date.now();
 
 							for (var hotkey_basic of gMacStuff.hotkeys_basic) {
-								var { code_os, hotkeyidk, mods } = hotkey_basic;
+								var { code_os, hotkeyid, mods } = hotkey_basic;
 								if (cutils.jscEqual(code_os, keyCode)) {
 									console.log('current mods:', modsc, 'hotkey->mods:', mods);
 									// make sure modifiers match
