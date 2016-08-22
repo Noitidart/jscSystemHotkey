@@ -150,10 +150,12 @@ function hotkeysRegisterPl(aArg) {
 								if (cutils.jscEqual(code_os, keyCode)) {
 									console.log('current mods:', modsc, 'hotkey->mods:', mods);
 									// make sure modifiers match
-									for (var modname in modsc) {
-										if (modsc[modname] != mods[modname]) {
-											console.warn('keyCode matched, however the modifiers dont match. first offending modifier:', modname)
-											return event; // dont block the event
+									if (mods) {
+										for (var modname in modsc) {
+											if (modsc[modname] != mods[modname]) {
+												console.warn('keyCode matched, however the modifiers dont match. first offending modifier:', modname)
+												return event; // dont block the event
+											}
 										}
 									}
 									callInMainworker('hotkeyMacCallback', {
