@@ -159,7 +159,7 @@ function hotkeysRegisterPl(aArg) {
 										}
 									}
 									callInMainworker('hotkeyMacCallback', {
-										hotkeyid,
+										id: hotkeyid,
 										now_triggered
 									});
 
