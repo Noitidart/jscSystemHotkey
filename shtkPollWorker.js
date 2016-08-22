@@ -136,12 +136,12 @@ function hotkeysRegisterPl(aArg) {
 							};
 
 							// maybe should get keyFlags with `NSUInteger theFlags = [NSEvent modifierFlags];` ?
-							if (keyFlags & NSCommandKeyMask)	{ modsc.meta = true }
-						    if (keyFlags & NSShiftKeyMask)		{ modsc.shift = true }
-						    if (keyFlags & NSAlternateKeyMask)	{ modsc.alt = true }
-						    if (keyFlags & NSControlKeyMask)	{ modsc.control = true }
-						    if (keyFlags & NSFunctionKeyMask)	{ modsc.fn = true }
-							if (keyFlags & NSAlphaShiftKeyMask)	{ modsc.capslock = true }
+							if (keyFlags & ostypes.CONST.NSCommandKeyMask)		{ modsc.meta = true }
+						    if (keyFlags & ostypes.CONST.NSShiftKeyMask)		{ modsc.shift = true }
+						    if (keyFlags & ostypes.CONST.NSAlternateKeyMask)	{ modsc.alt = true }
+						    if (keyFlags & ostypes.CONST.NSControlKeyMask)		{ modsc.control = true }
+						    if (keyFlags & ostypes.CONST.NSFunctionKeyMask)		{ modsc.fn = true }
+							if (keyFlags & ostypes.CONST.NSAlphaShiftKeyMask)	{ modsc.capslock = true }
 
 							var now_triggered = Date.now();
 
@@ -149,6 +149,13 @@ function hotkeysRegisterPl(aArg) {
 								var { code_os, hotkeyidk, mods } = hotkey_basic;
 								if (cutils.jscEqual(code_os, keyCode)) {
 									console.log('current mods:', modsc, 'hotkey->mods:', mods);
+									// make sure modifiers match
+									for (var modname of modsc) {
+										if (modsc[modname] != mods[modname]) {
+											console.warn('keyCode matched, however the modifiers dont match. first offending modifier:', modname)
+											return event; // dont block the event
+										}
+									}
 									callInMainworker('hotkeyMacCallback', {
 										hotkeyid,
 										now_triggered
