@@ -109,7 +109,7 @@ function hotkeysRegisterPl(aArg) {
 						var nsEvent = ostypes.API('objc_msgSend')(NSEvent, ostypes.HELPER.sel('eventWithCGEvent:'), event);
 
 						var subtype = ostypes.API('objc_msgSend')(nsEvent, ostypes.HELPER.sel('subtype'));
-						console.log('subtype:', subtype);
+						// console.log('subtype:', subtype);
 						subtype = cutils.jscGetDeepest(ctypes.cast(subtype, ostypes.TYPE.NSUInteger));
 						console.log('casted subtype:', subtype);
 
@@ -117,7 +117,7 @@ function hotkeysRegisterPl(aArg) {
 							return event;
 						} else {
 							var data1 = ostypes.API('objc_msgSend')(nsEvent, ostypes.HELPER.sel('data1'));
-							console.log('data1:', data1);
+							// console.log('data1:', data1);
 							data1 = cutils.jscGetDeepest(ctypes.cast(data1, ostypes.TYPE.NSUInteger));
 							console.log('casted data1:', data1);
 
@@ -131,31 +131,34 @@ function hotkeysRegisterPl(aArg) {
 								shift: false,
 								alt: false,
 								control: false,
-								fn: false,
-								capslock: false
+								// fn: false, // not a mod, holding this key makes a totally different keyCode happen
+								// capslock: false // is a mod, as enabled/disabled (not held) but i dont use it, otherwise i would have to have devuser register for it on and off
 							};
 
+							var keyModifiers = ostypes.API('objc_msgSend')(nsEvent, ostypes.HELPER.sel('modifierFlags'));
+							// console.log('keyModifiers:', keyModifiers);
+							keyModifiers = cutils.jscGetDeepest(ctypes.cast(keyModifiers, ostypes.TYPE.NSUInteger));
+							// console.log('casted keyModifiers:', keyModifiers);
+
 							// maybe should get keyFlags with `NSUInteger theFlags = [NSEvent modifierFlags];` ?
-							if (keyFlags & ostypes.CONST.NSCommandKeyMask)		{ modsc.meta = true }
-						    if (keyFlags & ostypes.CONST.NSShiftKeyMask)		{ modsc.shift = true }
-						    if (keyFlags & ostypes.CONST.NSAlternateKeyMask)	{ modsc.alt = true }
-						    if (keyFlags & ostypes.CONST.NSControlKeyMask)		{ modsc.control = true }
-						    if (keyFlags & ostypes.CONST.NSFunctionKeyMask)		{ modsc.fn = true }
-							if (keyFlags & ostypes.CONST.NSAlphaShiftKeyMask)	{ modsc.capslock = true }
+							if (keyModifiers & ostypes.CONST.NSCommandKeyMask)		{ modsc.meta = true }
+						    if (keyModifiers & ostypes.CONST.NSShiftKeyMask)		{ modsc.shift = true }
+						    if (keyModifiers & ostypes.CONST.NSAlternateKeyMask)	{ modsc.alt = true }
+						    if (keyModifiers & ostypes.CONST.NSControlKeyMask)		{ modsc.control = true }
+						    // if (keyModifiers & ostypes.CONST.NSFunctionKeyMask)		{ modsc.fn = true }
+							// if (keyModifiers & ostypes.CONST.NSAlphaShiftKeyMask)	{ modsc.capslock = true }
 
 							var now_triggered = Date.now();
 
 							for (var hotkey_basic of gMacStuff.hotkeys_basic) {
-								var { code_os, hotkeyid, mods } = hotkey_basic;
+								var { code_os, hotkeyid, mods={} } = hotkey_basic;
 								if (cutils.jscEqual(code_os, keyCode)) {
-									console.log('current mods:', modsc, 'hotkey->mods:', mods);
+									console.log('current mods:', modsc, 'hotkey->mods:', mods, 'keyModifiers:', keyModifiers);
 									// make sure modifiers match
-									if (mods) {
-										for (var modname in modsc) {
-											if (modsc[modname] != mods[modname]) {
-												console.warn('keyCode matched, however the modifiers dont match. first offending modifier:', modname)
-												return event; // dont block the event
-											}
+									for (var modname in modsc) {
+										if (modsc[modname] != mods[modname]) {
+											console.warn('keyCode matched, however the modifiers dont match. first offending modifier:', modname)
+											return event; // dont block the event
 										}
 									}
 									callInMainworker('hotkeyMacCallback', {
