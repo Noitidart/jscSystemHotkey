@@ -142,6 +142,7 @@ function hotkeysRegister() {
 
 								if (__REGISTREDs[hotkeyid]) {
 									hotkey.__REGISTERED = __REGISTREDs[hotkeyid];
+									hotkey.__REGISTERED.hotkeyid = hotkeyid;
 								}
 							}
 						}
