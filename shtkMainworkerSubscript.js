@@ -193,13 +193,16 @@ function hotkeysRegister() {
 				for (var i=0; i<10; i++) { // im just thinking 10 is a lot, usually you only have 1 keycode. mayyybe 2. 10 should cover it
 					var keycodesArrC = ctypes.cast(keycodesPtr, ostypes.TYPE.xcb_keycode_t.array(i+1).ptr).contents;
 					console.log('keycodesArrC:', keycodesArrC);
+					var keycodesArrCI = parseInt(cutils.jscGetDeepest(keycodesArrC[i]));
 					if (cutils.jscEqual(keycodesArrC[i], ostypes.CONST.XCB_NO_SYMBOL)) {
 						break;
 					} else {
-						code_os_to_codes_os[code].push(keycodesArrC[i]);
+						if (!code_os_to_codes_os[code].includes(keycodesArrCI)) {
+							code_os_to_codes_os[code].push(keycodesArrCI);
+						}
 					}
 				}
-
+				console.info('code_os_to_codes_os[code]:', code_os_to_codes_os[code]);
 				ostypes.API('free')(keycodesPtr);
 
 				if (!code_os_to_codes_os[code].length) {
@@ -213,6 +216,8 @@ function hotkeysRegister() {
 					return deferredmain.promise;
 				}
 			}
+
+			console.info('code_os_to_codes_os:', code_os_to_codes_os);
 
 			ostypes.API('xcb_key_symbols_free')(keysyms);
 
@@ -232,6 +237,7 @@ function hotkeysRegister() {
 				grabwins.push(grabwin);
 				ostypes.API('xcb_screen_next')(screens.address());
 			}
+			console.info('grabwins:', grabwins);
 
 			// start registering hotkeys if they are not registered
 			for (var hotkey of hotkeys) {
@@ -250,32 +256,38 @@ function hotkeysRegister() {
 					// var any_codeos_registered = false;
 					// var any_registered = false;
 					for (var grabwin of grabwins) {
+						var registered_codes_os = [];
+						var failed_codeos;
 						for (var code_os of codes_os) {
 							var rez_grab = ostypes.API('xcb_grab_key_checked')(ostypes.HELPER.cachedXCBConn(), 1, grabwin, mods_os, code_os, ostypes.CONST.XCB_GRAB_MODE_ASYNC, ostypes.CONST.XCB_GRAB_MODE_ASYNC);
 							var rez_check = ostypes.API('xcb_request_check')(ostypes.HELPER.cachedXCBConn(), rez_grab);
 							console.log('rez_check:', rez_check.toString());
 							if (!rez_check.isNull()) {
-								console.error('The hotkey is already in use by another application. Find that app, and make it release this hotkey. Possibly could be in use by the "Global Keyboard Shortcuts" of the system.'); // http://i.imgur.com/cLz1fDs.png
+								console.error('failed to register code_os:', code_os, 'with mods:', mods_os, 'on grabwin:', grabwin, 'The hotkey is already in use by another application. Find that app, and make it release this hotkey. Possibly could be in use by the "Global Keyboard Shortcuts" of the system.'); // http://i.imgur.com/cLz1fDs.png
+								failed_codeos = code_os;
+								break;
 							} else {
 								// even if just one registered, lets mark it registerd, so the `hotkeysUnregister` function will just get errors on what isnt yet registered from the set of `code_os_to_codes_os`
 								// any_registered = true;
+								console.log('ok registered succesfully code_os:', code_os, 'with mods:', mods_os, 'on grabwin:', grabwin);
+								registered_codes_os.push(code_os);
 								hotkey.__REGISTERED = {
 									grabwins,
-									codes_os,
+									codes_os: registered_codes_os,
 									last_triggered: 0
 								};
 							}
 						}
 					}
 
-					if (!hotkey.__REGISTERED) { // same as checking `if (!any_registered)`
+					if (failed_codeos !== undefined) { // same as checking `if (!any_registered)`
 						// nothing for any of the codeos's for this code registered on any of the grabwins
 						console.error('failed to register hotkey:', hotkey);
 						console.error('due to fail will not register any of the other hotkeys if there were any, and will unregister whatever was registered');
 						hotkeysUnregister();
 						deferredmain.resolve({
 							hotkey,
-							reason: 'It is most likely that this key combination is already in use by another application. Find that app, and make it release this hotkey. Possibly could be in use by the "Global Keyboard Shortcuts" of the system - http://i.imgur.com/cLz1fDs.png\n\n\nDetails: Was not able to register any of the `code_os` on any of the `grabwins`. `grabwins`: ' + grabwins.toString() + ' code_os: ' + code_os.toString()
+							reason: 'It is most likely that this key combination is already in use by another application. Find that app, and make it release this hotkey. Possibly could be in use by the "Global Keyboard Shortcuts" of the system - http://i.imgur.com/cLz1fDs.png\n\n\nDetails: Was not able to register the `code_os` of `' + failed_codeos + '` on `grabwin` of `' + grabwin + '`. Other info: `grabwins`: ' + grabwins.toString() + ' codes_os: ' + codes_os.toString() + ' code: ' + code.toString()
 						});
 						return deferredmain.promise;
 					}
