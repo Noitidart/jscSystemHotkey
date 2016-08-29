@@ -117,7 +117,7 @@ Now in your worker setup your hotkeys in a global called `gHKI`.
 		case 'darwin':
 				gHKI.hotkeys = [
 					{
-						code: ostypes.CONST.KEY_Space,  // can use any `ostypes.CONST.KEY_***` or `ostypes.CONST.NX_***`, see `ostypes_mac.jsm` for list of values. See section "About mac_method" to see which method supports which keys, I haven't fully studied this, so please your knowledge/experiences with it
+						code: ostypes.CONST.kVK_Space,  // can use any `ostypes.CONST.kVK_***` or if using "corefoundation" or "objc" `mac_method` then also can use `ostypes.CONST.NX_***`, see `ostypes_mac.jsm` for list of values. See section "About mac_method" to see which method supports which keys, I haven't fully studied this, so please your knowledge/experiences with it
 						mods: {
 							shift: true
 						},
