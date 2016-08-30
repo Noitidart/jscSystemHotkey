@@ -632,7 +632,8 @@ function hotkeysModsToModsos(mods) {
 					mods_os |= ostypes.CONST.XCB_MOD_MASK_1;
 				}
 				if (mods.meta) {
-					// by meta i mean "Win" key on windows. xcb likes to call meta the alt key. so i go with "Win" key					mods_os |= ostypes.CONST.XCB_MOD_MASK_4
+					// by meta i mean "Win" key on windows. xcb likes to call meta the alt key. so i go with "Win" key
+					mods_os |= ostypes.CONST.XCB_MOD_MASK_4;
 				}
 			}
 	}
