@@ -156,7 +156,7 @@ function hotkeysRegisterPl(aArg) {
 									console.log('current mods:', modsc, 'hotkey->mods:', mods, 'keyModifiers:', keyModifiers);
 									// make sure modifiers match
 									for (var modname in modsc) {
-										if (modsc[modname] != mods[modname]) {
+										if (!!modsc[modname] != !!mods[modname]) { // !! casts to boolean
 											console.warn('keyCode matched, however the modifiers dont match. first offending modifier:', modname)
 											return event; // dont block the event
 										}
